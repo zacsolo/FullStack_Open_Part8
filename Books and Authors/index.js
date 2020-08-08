@@ -1,6 +1,6 @@
 const { v1: uuid } = require('uuid');
 const { ApolloServer, gql } = require('apollo-server');
-const { authors, books } = require('./data');
+let { authors, books } = require('./data');
 
 const typeDefs = gql`
   type Books {
@@ -72,8 +72,9 @@ const resolvers = {
   Mutation: {
     addBook: (root, args) => {
       const book = { ...args, id: uuid() };
+      console.log('BOOK_______ -->', book);
       books = books.concat(book);
-      return book;
+      console.log('ALL__BOOKS__||', books);
     },
     editAuthor: (root, args) => {
       const authorSearch = authors.find((author) => author.name === args.name);
@@ -81,7 +82,10 @@ const resolvers = {
         return null;
       }
       const author = { ...authorSearch, born: args.setBornTo };
-      authors = authors.concat(author);
+      const newArr = authors.map((auth) =>
+        auth.name === author.name ? author : auth
+      );
+      authors = newArr;
       return author;
     },
   },
