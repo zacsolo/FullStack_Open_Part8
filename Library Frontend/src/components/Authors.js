@@ -18,14 +18,17 @@ const Authors = ({ show }) => {
   if (result.loading) {
     return <div>Loading....</div>;
   }
-
+  if (!result.data) {
+    console.log(result);
+    return <div>Something is wrong...</div>;
+  }
   const authors = result.data.allAuthors;
 
   const updateAuthor = (e) => {
     e.preventDefault();
-    console.log('NAME__', name);
-    console.log('NUMBER__', number);
+
     changeBorn({ variables: { name, setBornTo: Number(number) } });
+    setNumber('');
   };
 
   return (
