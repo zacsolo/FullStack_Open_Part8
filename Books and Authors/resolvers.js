@@ -1,20 +1,36 @@
 const { v1: uuid } = require('uuid');
 const { UserInputError, AuthenticationError } = require('apollo-server');
 const mongoose = require('mongoose');
-
 const Authors = require('./models/author');
 const Books = require('./models/book');
 const User = require('./models/user');
+const { PubSub } = require('apollo-server');
+const pubsub = new PubSub();
 const jwt = require('jsonwebtoken');
+
 const JWT_SECRET = 'Spiderman';
 
 const resolvers = {
   Query: {
-    me: (root, args, context) => {
+    me: async (root, args, context) => {
       return context.currentUser;
     },
-    allAuthors: () => Authors.find({}),
-    allBooks: async (root, args) => {
+    usersFavoriteBooks: async (root, args, context) => {
+      console.log('FAV BOOKS', context.currentUser);
+      const bookArr = await Books.find({});
+      if (context.currentUser) {
+        return bookArr.filter((book) =>
+          book.genres.toString().includes(context.currentUser.favoriteGenre)
+        );
+      }
+
+      return bookArr;
+    },
+    allAuthors: async () => {
+      const allAuth = await Authors.find({});
+      return allAuth;
+    },
+    allBooks: async (root, args, context) => {
       if (args.author && args.genre) {
         const authorArr = await Books.find({ author: args.author });
         return authorArr.filter((book) =>
@@ -27,15 +43,15 @@ const resolvers = {
         return Books.find({ author: args.author });
       } else if (args.genre) {
         const bookArr = await Books.find({}); //This is LAZY! change to make query directly for info
-        return bookArr.find((book) =>
-          book.genres
-            .toString()
-            .toLowerCase()
-            .includes(args.genre.toLowerCase())
+        return bookArr.filter((book) =>
+          book.genres.toString().includes(args.genre)
         );
       }
       const allBooks = await Books.find({});
-
+      console.log(
+        'CONTEXT CURRENT USER, in all books----->',
+        context.currentUser
+      );
       return allBooks;
     },
     bookCount: () => Books.collection.countDocuments(),
@@ -50,9 +66,17 @@ const resolvers = {
       const authorObj = await Authors.findOne({ _id: root._id });
       return authorObj.born;
     },
-    bookCount: (root) => Books.find({ author: root.name }).countDocuments(),
+    bookCount: async (root) => {
+      const authObj = await Authors.findOne({ _id: root._id });
+      const bookObj = await Books.find({ author: authObj.id });
+      return bookObj.length;
+    },
   },
-
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED']),
+    },
+  },
   Mutation: {
     //--ADD BOOK, IF AUTHOR DOESN'T EXIST IT CREATES A NEW ONE--------
     addBook: async (root, args, context) => {
@@ -80,6 +104,7 @@ const resolvers = {
           author: newAuth,
           id: uuid(),
         });
+        pubsub.publish('BOOK_ADDED', { bookAdded: book });
         return await book.save();
       } catch (error) {
         throw new UserInputError(error.message, {
@@ -129,7 +154,7 @@ const resolvers = {
     },
     login: async (root, args) => {
       const user = await User.findOne({ username: args.username });
-      console.log(user);
+
       if (!user || args.password !== 'secret') {
         throw new UserInputError('wrong credentials');
       }
@@ -138,7 +163,7 @@ const resolvers = {
         username: user.username,
         id: user._id,
       };
-      console.log(userForToken);
+
       return { value: jwt.sign(userForToken, JWT_SECRET) };
     },
   },

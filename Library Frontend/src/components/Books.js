@@ -1,39 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client';
-import { ALL_BOOKS } from '../queries';
+import { useQuery, useLazyQuery } from '@apollo/client';
+import { ALL_BOOKS, FIND_BY_GENRE } from '../queries';
 
-const Books = ({ show, recommend }) => {
+const Books = ({ show }) => {
   const result = useQuery(ALL_BOOKS);
+  const [findByGenre, { loading, data }] = useLazyQuery(FIND_BY_GENRE);
   const [filteredBooks, setFilteredBooks] = useState([]);
   const [genre, setGenre] = useState('');
-  console.log('recommend props', recommend);
 
   useEffect(() => {
-    if (recommend !== 'all books') {
-      const newArr = books.filter((book) =>
-        book.genres.toString().includes(recommend)
-      );
-      setFilteredBooks(newArr);
-      setGenre(recommend);
+    if (data) {
+      setFilteredBooks(data.allBooks);
+      return;
     }
-  }, [recommend]);
+  }, [data]);
 
   if (!show) {
     return null;
   }
 
-  if (result.loading) {
+  if (result.loading || loading) {
     return <div>Loading....</div>;
   }
   const books = result.data.allBooks;
 
   const handleFitler = (e) => {
-    const newArr = books.filter((book) =>
-      book.genres.toString().includes(e.target.value)
-    );
-    setFilteredBooks(newArr);
+    if (e.target.value === 'all books' || e.target.value === 'none') {
+      findByGenre(books);
+    }
+    findByGenre({ variables: { genre: e.target.value } });
     setGenre(e.target.value);
   };
+
+  console.log('setDataFromDB', data);
 
   const unfiltered = () => {
     if (filteredBooks.length < 1) {
@@ -87,6 +86,7 @@ const Books = ({ show, recommend }) => {
       {unfiltered()}
       <h2>Filter Books</h2>
       <select name='genres' onChange={handleFitler}>
+        <option key='none'></option>
         {books.map((a) =>
           a.genres.map((el) => (
             <option key={a.title + el}>{el.toString()}</option>

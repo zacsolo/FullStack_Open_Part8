@@ -1,6 +1,9 @@
 const { gql } = require('apollo-server');
 
 const typeDefs = gql`
+  type Subscription {
+    bookAdded: Book!
+  }
   type User {
     username: String!
     favoriteGenre: String!
@@ -23,11 +26,12 @@ const typeDefs = gql`
     bookCount: Int
   }
   type Query {
-    me: User
+    me(username: String): User
     allAuthors: [Author!]
     allBooks(author: String, genre: String): [Book!]
     bookCount: Int!
     authorCount: Int!
+    usersFavoriteBooks: [Book!]
   }
   type Mutation {
     addBook(

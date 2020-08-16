@@ -3,18 +3,39 @@ import Authors from './components/Authors';
 import Books from './components/Books';
 import NewBook from './components/NewBook';
 import Login from './components/Login';
+import Recommended from './components/Recommended';
+import { BOOK_ADDED, ALL_BOOKS } from './queries';
 
-import { useApolloClient } from '@apollo/client';
-import { useQuery } from '@apollo/client';
-import { GET_FAVORITE_GENRE } from './queries';
+import { useApolloClient, useSubscription } from '@apollo/client';
 
 const App = () => {
-  const result = useQuery(GET_FAVORITE_GENRE);
   const [page, setPage] = useState('authors');
   const [token, setToken] = useState('');
-  const [favGenre, setFavGenre] = useState('');
+
+  const updateCacheWith = (addedBook) => {
+    const includedIn = (set, object) => {
+      set.map((p) => p.id).includes(object.id);
+    };
+
+    const dataInStore = client.readQuery({ query: ALL_BOOKS });
+    console.log({ dataInStore }, { addedBook });
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks: dataInStore.allBooks.concat(addedBook) },
+      });
+    }
+  };
+
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      const addedBook = subscriptionData.data.bookAdded;
+      window.alert(`${addedBook.title} by ${addedBook.author.name} added`);
+      updateCacheWith(addedBook);
+    },
+  });
+
   const client = useApolloClient();
-  console.log('TOKEN VALUE---->', token);
 
   useEffect(() => {
     setToken(localStorage['user-token']);
@@ -24,13 +45,13 @@ const App = () => {
     setToken(null);
     localStorage.clear();
     client.resetStore();
+    setPage('authors');
   };
 
-  const handleFavoriteGenre = async () => {
-    setPage('recommendBooks');
-    setFavGenre(result.data.me.favoriteGenre);
+  const handleFavoriteGenre = () => {
+    setPage('recommend');
   };
-
+  console.log('TOLKEN', token);
   const loggedInView = () => {
     if (token) {
       return (
@@ -54,12 +75,11 @@ const App = () => {
 
       <Authors show={page === 'authors'} />
 
-      <Books
-        show={page === 'books' || page === 'recommendBooks'}
-        recommend={page === 'recommendBooks' ? favGenre : 'all books'}
-      />
+      <Books show={page === 'books'} />
 
-      <NewBook show={page === 'add'} />
+      <Recommended show={page === 'recommend'} />
+
+      <NewBook show={page === 'add'} updateCacheWith={updateCacheWith} />
 
       <Login show={page === 'login'} setToken={setToken} setPage={setPage} />
     </div>

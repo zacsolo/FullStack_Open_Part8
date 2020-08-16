@@ -1,5 +1,19 @@
 import { gql } from '@apollo/client';
 
+export const BOOK_ADDED = gql`
+  subscription {
+    bookAdded {
+      title
+      author {
+        name
+      }
+      published
+      genres
+      id
+    }
+  }
+`;
+
 export const ALL_AUTHORS = gql`
   query {
     allAuthors {
@@ -20,14 +34,34 @@ export const ALL_BOOKS = gql`
       }
       published
       genres
+      id
     }
   }
 `;
 
-export const GET_FAVORITE_GENRE = gql`
+export const FIND_BY_GENRE = gql`
+  query findByGenre($genre: String) {
+    allBooks(genre: $genre) {
+      title
+      author {
+        name
+      }
+      published
+      genres
+      id
+    }
+  }
+`;
+
+export const USERS_FAVORITES = gql`
   query {
-    me {
-      favoriteGenre
+    usersFavoriteBooks {
+      title
+      author {
+        name
+      }
+      published
+      genres
     }
   }
 `;
@@ -51,6 +85,7 @@ export const CREATE_BOOK = gql`
       }
       published
       genres
+      id
     }
   }
 `;

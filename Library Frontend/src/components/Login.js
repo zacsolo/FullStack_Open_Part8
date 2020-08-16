@@ -13,7 +13,7 @@ export default function Login({ show, setToken, setPage }) {
       setToken(token);
       localStorage.setItem('user-token', token);
     }
-  }, [result.data]);
+  }, [result.data, setPage]);
 
   if (!show) {
     return null;
